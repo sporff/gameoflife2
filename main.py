@@ -1,3 +1,4 @@
+import sys
 import pygame
 from pygame.locals import *
 
@@ -13,7 +14,15 @@ done = False
 
 
 # Declare map
-
+mapWidth = 10
+mapHeight = 10
+mapCells = [[0 for x in range(mapWidth)] for y in range(mapHeight)]
+print(mapCells[0][0])
+for y in range(0,10):
+    for x in range(0,10):
+        mapCells[y][x] = x + (y*10)
+        sys.stdout.write(str(mapCells[y][x]))
+    sys.stdout.write('\n')
 
 while done == False:
     screen.fill((20,0,100))
