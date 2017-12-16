@@ -83,7 +83,6 @@ class GOLmap:
         #if xCount > 2, xCount = 0, px = x-1, py += 1
 
         for i in range(0,9):
-            print("Index: ", i, " # ", px, ", ", py )
             if i != 4:
                 if self.IsCellInBounds(px, py) == True:
                     if (self._mapCells[self._mapCurrentBuffer][py][px] == 1):
@@ -96,8 +95,6 @@ class GOLmap:
                 px = x-1
                 py += 1
 
-
-        print("****************************")
         return liveNeighbors
 
 
