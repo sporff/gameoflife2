@@ -43,6 +43,8 @@ class GOLmap:
                 # sys.stdout.write(str(mapCells[0][y][x]))
             sys.stdout.write('\n')
 
+        return
+
 
 
 
@@ -57,6 +59,7 @@ class GOLmap:
                     pygame.draw.rect(surface, self._mapCellOffColor, (xCur, yCur, self._mapCellSize, self._mapCellSize))
                 else:
                     pygame.draw.rect(surface, self._mapCellOnColor, (xCur, yCur, self._mapCellSize, self._mapCellSize))
+        return
 
 
 
@@ -73,14 +76,15 @@ class GOLmap:
         # 0 1 2
         # 3 4 5
         # 6 7 8
+
+        # loop through 0-9
+        # if i == 4, skip
+        # if xCount > 2, xCount = 0, px = x-1, py += 1
+
         liveNeighbors = 0
 
         px = x-1; py = y-1;
         xCount = 0
-
-        #loop through 0-9
-        #if i == 4, skip
-        #if xCount > 2, xCount = 0, px = x-1, py += 1
 
         for i in range(0,9):
             if i != 4:
@@ -128,7 +132,7 @@ def Main():
 
         gmap.DrawMap(screen)
 
-        print("Live neighbors: ", gmap.GetLiveNeighborCount(1,1))
+        print("Live neighbors: ", gmap.GetLiveNeighborCount(0,0))
 
         # Event handling
         for event in pygame.event.get():
