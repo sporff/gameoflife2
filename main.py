@@ -42,7 +42,7 @@ while done == False:
 
 
     # Updates
-    #pygame.display.update()
-    #clock.tick(20)
+    pygame.display.update()
+    clock.tick(20)
 
 print("Exited")
