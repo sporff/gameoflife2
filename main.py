@@ -42,7 +42,6 @@ while done == False:
 
 
     # Updates
-
     pygame.display.update()
     clock.tick(20)
 
