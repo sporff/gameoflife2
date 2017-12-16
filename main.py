@@ -1,3 +1,4 @@
+import time
 import sys
 import pygame
 from random import randint
@@ -81,13 +82,22 @@ class GOLmap:
         # Draw Map
         for y in range(0, self._mapHeight):
             yCur = self._mapPos[1] + (y * self._mapCellSize)
+            xCur = self._mapPos[0]
             for x in range(0, self._mapWidth):
-                xCur = self._mapPos[0] + (x * self._mapCellSize)
+                #xCur = self._mapPos[0] + (x * self._mapCellSize)
+
+                #if self.GetCellStatus(x,y) == CellStatus.Dead:
+                #    pygame.draw.rect(surface, self._mapCellOffColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
+                #else:
+                #    pygame.draw.rect(surface, self._mapCellOnColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
+
+                #if self.GetCellStatus(x,y) == CellStatus.Alive:
+                #    pygame.draw.rect(surface, self._mapCellOnColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
 
                 if self.GetCellStatus(x,y) == CellStatus.Dead:
                     pygame.draw.rect(surface, self._mapCellOffColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
-                else:
-                    pygame.draw.rect(surface, self._mapCellOnColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
+
+                xCur += self._mapCellSize
         return
 
 
@@ -141,7 +151,7 @@ class GOLmap:
         liveNeighbors = 0
 
         px = x-1; py = y-1;
-        xCount = 0
+        xMax = x+1
 
         for i in range(0,9):
             if i != 4:
@@ -150,9 +160,7 @@ class GOLmap:
                         liveNeighbors += 1
 
             px += 1
-            xCount += 1
-            if xCount > 2:
-                xCount = 0
+            if px > xMax:
                 px = x-1
                 py += 1
 
@@ -165,15 +173,18 @@ class GOLmap:
     def UpdateBackBuffer(self):
         liveNeighbors = 0
         cellStatus = 0
-        anyAlive = False
+        curBuffer = self._mapCurrentBuffer
 
         for y in range(0, self._mapHeight):
             for x in range(0, self._mapWidth):
+                #self.SetCellStatusBackBuf(x, y, cellStatus)
+
+
                 liveNeighbors = self.GetLiveNeighborCount(x,y)
-                cellStatus = self.GetCellStatus(x,y)
+                #cellStatus = self.GetCellStatus(x,y)
+                cellStatus = self._mapCells[curBuffer][y][x]
 
                 if cellStatus == CellStatus.Alive:
-                    #anyAlive = True
                     if (liveNeighbors < 2 or liveNeighbors > 3):
                         self.SetCellStatusBackBuf(x,y, CellStatus.Dead)
                     else:
@@ -183,10 +194,6 @@ class GOLmap:
                         self.SetCellStatusBackBuf(x, y, CellStatus.Alive)
                     else:
                         self.SetCellStatusBackBuf(x, y, CellStatus.Dead)
-
-
-            #if anyAlive == False:
-                #self.RandomizeMap()
 
         return
 
@@ -219,18 +226,20 @@ def Main():
     done = False
 
     # Declare map
-    gmap = GOLmap(140,90,10)
+    #gmap = GOLmap(140,90,10)
+    gmap = GOLmap(280, 180, 5)
 
     gmap.DrawMap(screen)
     pygame.display.update()
-    sleep(0.5);
 
+    lastTimer = time.time()
     mouseDown = False
     mouseCellPlaceType = 1
     paused = False
 
     while done == False:
-        screen.fill((20, 0, 100))
+        screen.fill((20, 20, 20))
+        #screen.fill((200, 200, 200))
 
 
 
@@ -256,7 +265,7 @@ def Main():
                     radius = randint(5,20)
                     gmap.FillMapRect(cell[0]-radius, cell[1]-radius, radius+radius, radius+radius, 1)
 
-                print(event.button)
+                #print(event.button)
 
                 pass
             elif event.type == pygame.MOUSEBUTTONUP:
@@ -283,16 +292,26 @@ def Main():
             cell = gmap.ScreenToCell(pos[0], pos[1])
             gmap.SetCellStatus(cell[0], cell[1], mouseCellPlaceType)
 
+        lastTimer = time.time()
         gmap.DrawMap(screen)
+
+
         # Updates
+        #lastTimer = time.time()
         if paused == False:
+
             gmap.UpdateBackBuffer()
+            thisTimer = time.time()
+            print(thisTimer - lastTimer)
             gmap.SwapBuffers()
         #gmap.ClearBackBuffer()
 
+        lastTimer = thisTimer
 
         pygame.display.update()
         #sleep(0.1);
+        #
+
 
 
 
