@@ -5,10 +5,10 @@ from random import randint
 from time import sleep
 #from pygame.locals import *
 
-#1. Any live cell with fewer than two live neighbours dies (referred to as underpopulation or exposure[1]).
-#2. Any live cell with more than three live neighbours dies (referred to as overpopulation or overcrowding).
-#3. Any live cell with two or three live neighbours lives, unchanged, to the next generation.
-#4. Any dead cell with exactly three live neighbours will come to life.
+# 1. Any live cell with fewer than two live neighbours dies (referred to as underpopulation or exposure[1]).
+# 2. Any live cell with more than three live neighbours dies (referred to as overpopulation or overcrowding).
+# 3. Any live cell with two or three live neighbours lives, unchanged, to the next generation.
+# 4. Any dead cell with exactly three live neighbours will come to life.
 
 class CellStatus:
     Alive = 1
@@ -47,13 +47,6 @@ class GOLmap:
 
 
         self.RandomizeMap()
-        #self.SwapBuffers()
-        #self.RandomizeMap()
-        #self.SwapBuffers()
-
-        #self.SetCellStatus(2, 1, CellStatus.Alive)
-        #self.SetCellStatus(2, 2, CellStatus.Alive)
-        #self.SetCellStatus(2, 3, CellStatus.Alive)
 
         self.ClearBackBuffer()
 
@@ -84,18 +77,18 @@ class GOLmap:
             yCur = self._mapPos[1] + (y * self._mapCellSize)
             xCur = self._mapPos[0]
             for x in range(0, self._mapWidth):
-                #xCur = self._mapPos[0] + (x * self._mapCellSize)
+                # xCur = self._mapPos[0] + (x * self._mapCellSize)
+
+                # if self.GetCellStatus(x,y) == CellStatus.Dead:
+                #    pygame.draw.rect(surface, self._mapCellOffColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
+                # else:
+                #    pygame.draw.rect(surface, self._mapCellOnColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
+
+                if self.GetCellStatus(x,y) == CellStatus.Alive:
+                    pygame.draw.rect(surface, self._mapCellOnColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
 
                 #if self.GetCellStatus(x,y) == CellStatus.Dead:
                 #    pygame.draw.rect(surface, self._mapCellOffColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
-                #else:
-                #    pygame.draw.rect(surface, self._mapCellOnColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
-
-                #if self.GetCellStatus(x,y) == CellStatus.Alive:
-                #    pygame.draw.rect(surface, self._mapCellOnColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
-
-                if self.GetCellStatus(x,y) == CellStatus.Dead:
-                    pygame.draw.rect(surface, self._mapCellOffColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
 
                 xCur += self._mapCellSize
         return
@@ -149,11 +142,13 @@ class GOLmap:
         # if xCount > 2, xCount = 0, px = x-1, py += 1
 
         liveNeighbors = 0
+        sx = x-1
 
-        px = x-1; py = y-1;
+        px = x-1
+        py = y-1
         xMax = x+1
 
-        for i in range(0,9):
+        for i in range(0, 9):
             if i != 4:
                 if self.IsCellInBounds(px, py) == True:
                     if (self.GetCellStatus(px,py) == CellStatus.Alive):
@@ -174,6 +169,7 @@ class GOLmap:
         liveNeighbors = 0
         cellStatus = 0
         curBuffer = self._mapCurrentBuffer
+        backBuffer = self._mapBackBuffer
 
         for y in range(0, self._mapHeight):
             for x in range(0, self._mapWidth):
@@ -186,14 +182,18 @@ class GOLmap:
 
                 if cellStatus == CellStatus.Alive:
                     if (liveNeighbors < 2 or liveNeighbors > 3):
-                        self.SetCellStatusBackBuf(x,y, CellStatus.Dead)
+                        self._mapCells[backBuffer][y][x] = CellStatus.Dead
+                        #self.SetCellStatusBackBuf(x,y, CellStatus.Dead)
                     else:
-                        self.SetCellStatusBackBuf(x, y, CellStatus.Alive)
+                        self._mapCells[backBuffer][y][x] = CellStatus.Alive
+                        #self.SetCellStatusBackBuf(x, y, CellStatus.Alive)
                 elif cellStatus == CellStatus.Dead:
                     if (liveNeighbors == 3):
-                        self.SetCellStatusBackBuf(x, y, CellStatus.Alive)
+                        self._mapCells[backBuffer][y][x] = CellStatus.Alive
+                       #self.SetCellStatusBackBuf(x, y, CellStatus.Alive)
                     else:
-                        self.SetCellStatusBackBuf(x, y, CellStatus.Dead)
+                        self._mapCells[backBuffer][y][x] = CellStatus.Dead
+                        #self.SetCellStatusBackBuf(x, y, CellStatus.Dead)
 
         return
 
@@ -226,8 +226,8 @@ def Main():
     done = False
 
     # Declare map
-    #gmap = GOLmap(140,90,10)
-    gmap = GOLmap(280, 180, 5)
+    gmap = GOLmap(140,90,10)
+    #gmap = GOLmap(280, 180, 5)
 
     gmap.DrawMap(screen)
     pygame.display.update()
@@ -238,8 +238,8 @@ def Main():
     paused = False
 
     while done == False:
-        screen.fill((20, 20, 20))
-        #screen.fill((200, 200, 200))
+        #screen.fill((20, 20, 20))
+        screen.fill((200, 200, 200))
 
 
 
@@ -261,7 +261,7 @@ def Main():
                     mouseCellPlaceType = 0
                 elif event.button == 2:
                     pos = pygame.mouse.get_pos()
-                    cell = gmap.ScreenToCell(pos[0],pos[1])
+                    cell = gmap.ScreenToCell(pos[0], pos[1])
                     radius = randint(5,20)
                     gmap.FillMapRect(cell[0]-radius, cell[1]-radius, radius+radius, radius+radius, 1)
 
@@ -276,7 +276,7 @@ def Main():
                 if event.key == pygame.K_q or event.key == pygame.K_ESCAPE:
                     done = True
                 elif event.key == pygame.K_f:
-                    gmap.FillMapRect(randint(0,gmap._mapWidth), randint(0,gmap._mapHeight),randint(0,50),randint(0,50),1)
+                    gmap.FillMapRect(randint(0, gmap._mapWidth), randint(0, gmap._mapHeight), randint(0, 50), randint(0, 50), 1)
                 elif event.key == pygame.K_c:
                     gmap.FillMapRect(0, 0, gmap._mapWidth, gmap._mapHeight, 0)
                 elif event.key == pygame.K_g:
