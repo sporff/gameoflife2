@@ -2,6 +2,8 @@ import time
 import sys
 import pygame
 from random import randint
+import os
+import threading
 from time import sleep
 #from pygame.locals import *
 
@@ -26,6 +28,9 @@ class GOLmap:
     # Map of [mapHeight][mapWidth] size, with a 2nd buffer of same size for calculating next step
     _mapCells = None
 
+    _threadCount = 1
+    _threads = None
+
 
 
     def __init__(self, mapWidth=10, mapHeight=10, mapCellSize=10):
@@ -45,10 +50,16 @@ class GOLmap:
 
         self._mapCells = [[[0 for x in range(self._mapWidth)] for y in range(self._mapHeight)] for i in range(2)]
 
-
         self.RandomizeMap()
-
         self.ClearBackBuffer()
+
+        self._threadCount = os.cpu_count()
+        #self._threadCount = 2
+        print("Thread count: ", self._threadCount)
+        if self._threadCount < 0 or self._threadCount > 20:
+            self._threadCount = 1
+        self._threads = [None for t in range(0, self._threadCount)]
+
 
         return
 
@@ -79,19 +90,61 @@ class GOLmap:
             for x in range(0, self._mapWidth):
                 # xCur = self._mapPos[0] + (x * self._mapCellSize)
 
+                # For Drawing Alive AND Dead cells
                 # if self.GetCellStatus(x,y) == CellStatus.Dead:
                 #    pygame.draw.rect(surface, self._mapCellOffColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
                 # else:
                 #    pygame.draw.rect(surface, self._mapCellOnColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
 
-                if self.GetCellStatus(x,y) == CellStatus.Alive:
-                    pygame.draw.rect(surface, self._mapCellOnColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
+                # For drawing Alive cells only
+                #if self.GetCellStatus(x,y) == CellStatus.Alive:
+                #    pygame.draw.rect(surface, self._mapCellOnColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
 
-                #if self.GetCellStatus(x,y) == CellStatus.Dead:
-                #    pygame.draw.rect(surface, self._mapCellOffColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
+                # For drawing Dead cells only
+                if self.GetCellStatus(x,y) == CellStatus.Dead:
+                    pygame.draw.rect(surface, self._mapCellOffColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
 
                 xCur += self._mapCellSize
         return
+
+
+    def DrawMapSlice(self, surface, yStart, yEnd):
+        yCur = self._mapPos[1] + yStart*self._mapCellSize;
+
+        # print("Y: ", yStart, ", ", yEnd)
+
+        for y in range(yStart, yEnd):
+            xCur = self._mapPos[0]
+            for x in range(0, self._mapWidth):
+                # For drawing Dead cells only
+                if self.GetCellStatus(x,y) == CellStatus.Dead:
+                    pygame.draw.rect(surface, self._mapCellOffColor, (xCur, yCur, self._mapCellSize-1, self._mapCellSize-1))
+
+                xCur += self._mapCellSize
+            yCur += self._mapCellSize
+
+        return
+
+
+
+    def DrawMapMultiThread(self, surface):
+        sliceHeight = int(self._mapHeight / self._threadCount)
+
+        for i in range(0,self._threadCount):
+            # Calc slice start and end rows.  make sure last one ends at last row (might have been rounded)
+            sliceStart = sliceHeight * i
+            sliceEnd = sliceHeight * (i+1)
+            if (i == (self._threadCount-1)):
+                sliceEnd = self._mapHeight
+
+            t = threading.Thread(target=self.DrawMapSlice,args=[surface, sliceStart, sliceEnd])
+            t.start()
+
+        for i in range(0, self._threadCount):
+            t.join()
+
+        return
+
 
 
 
@@ -163,9 +216,81 @@ class GOLmap:
 
 
 
+    def UpdateBackBufferSlice(self, sliceStart, sliceEnd):
+
+        curBuffer = self._mapCurrentBuffer
+        backBuffer = self._mapBackBuffer
+
+        for y in range(sliceStart, sliceEnd):
+            for x in range(0, self._mapWidth):
+
+                liveNeighbors = 0
+                sx = x - 1
+
+                px = x - 1
+                py = y - 1
+                xMax = x + 1
+
+                for i in range(0, 9):
+                    #print(i)
+                    if i != 4:
+                        if self.IsCellInBounds(px, py) == True:
+                            if (self.GetCellStatus(px, py) == CellStatus.Alive):
+                                liveNeighbors += 1
+
+                    px += 1
+                    if px > xMax:
+                        px = x - 1
+                        py += 1
+
+                #return liveNeighbors
+                #liveNeighbors = self.GetLiveNeighborCount(x, y)
+                cellStatus = self._mapCells[curBuffer][y][x]
+
+                if cellStatus == CellStatus.Alive:
+                    if (liveNeighbors < 2 or liveNeighbors > 3):
+                        self._mapCells[backBuffer][y][x] = CellStatus.Dead
+                        #self.SetCellStatusBackBuf(x,y, CellStatus.Dead)
+                    else:
+                        self._mapCells[backBuffer][y][x] = CellStatus.Alive
+                        #self.SetCellStatusBackBuf(x, y, CellStatus.Alive)
+                elif cellStatus == CellStatus.Dead:
+                    if (liveNeighbors == 3):
+                        self._mapCells[backBuffer][y][x] = CellStatus.Alive
+                       #self.SetCellStatusBackBuf(x, y, CellStatus.Alive)
+                    else:
+                        self._mapCells[backBuffer][y][x] = CellStatus.Dead
+                        #self.SetCellStatusBackBuf(x, y, CellStatus.Dead)
+
+
+        return
+
+    def UpdateBackBufferMultiThread(self):
+        start = time.time()
+        sliceHeight = int(self._mapHeight / self._threadCount)
+
+        #print("Update Multithreaded")
+        for i in range(0, self._threadCount):
+            # Calc slice start and end rows.  make sure last one ends at last row (might have been rounded)
+            sliceStart = sliceHeight * i
+            sliceEnd = sliceHeight * (i + 1)
+            if (i == (self._threadCount - 1)):
+                sliceEnd = self._mapHeight
+
+            t = threading.Thread(target=self.UpdateBackBufferSlice, args=(sliceStart, sliceEnd))
+            t.start()
+
+        for i in range(0, self._threadCount):
+            t.join()
+
+
+
+        return
 
 
     def UpdateBackBuffer(self):
+        #print("Update Single threaded")
+
         liveNeighbors = 0
         cellStatus = 0
         curBuffer = self._mapCurrentBuffer
@@ -226,8 +351,11 @@ def Main():
     done = False
 
     # Declare map
-    gmap = GOLmap(140,90,10)
+    #gmap = GOLmap(50,50,10)
+    gmap = GOLmap(70, 45, 20)
+    #gmap = GOLmap(140,90,10)
     #gmap = GOLmap(280, 180, 5)
+    #gmap = GOLmap(1400,900, 1)
 
     gmap.DrawMap(screen)
     pygame.display.update()
@@ -238,8 +366,8 @@ def Main():
     paused = False
 
     while done == False:
-        #screen.fill((20, 20, 20))
-        screen.fill((200, 200, 200))
+        screen.fill((20, 20, 20))
+        #screen.fill((200, 200, 200))
 
 
 
@@ -294,13 +422,14 @@ def Main():
 
         lastTimer = time.time()
         gmap.DrawMap(screen)
-
+        #gmap.DrawMapMultiThread(screen)
 
         # Updates
         #lastTimer = time.time()
         if paused == False:
 
             gmap.UpdateBackBuffer()
+            #gmap.UpdateBackBufferMultiThread()
             thisTimer = time.time()
             print(thisTimer - lastTimer)
             gmap.SwapBuffers()
